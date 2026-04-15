@@ -1,6 +1,6 @@
 ---
 paths:
-  - "**/domain/**"
+  - "./src/**/domain/**"
 ---
 
 # Domain Layer Rules

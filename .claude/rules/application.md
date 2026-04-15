@@ -1,6 +1,6 @@
 ---
 paths:
-  - "**/application/**"
+  - "./src/**/application/**"
 ---
 
 # Application Layer Rules

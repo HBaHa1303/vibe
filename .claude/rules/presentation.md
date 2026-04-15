@@ -1,6 +1,6 @@
 ---
 paths:
-  - "**/presentation/**"
+  - "./src/**/presentation/**"
 ---
 
 # Presentation Layer Rules
