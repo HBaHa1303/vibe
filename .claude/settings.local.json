@@ -1,0 +1,17 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(find /home/hoangbaha1303/Projects/Learn/AI/vibe -type f -name \"*.md\" | grep -v \".claude\" | xargs ls -la)",
+      "WebSearch",
+      "Bash(./gradlew build:*)",
+      "Bash(./gradlew :user-service:build 2>&1)",
+      "Bash(./gradlew :user-service:test 2>&1)",
+      "Bash(./gradlew :user-service:dependencies --configuration testCompileClasspath 2>&1 | head -80)",
+      "Bash(./gradlew :user-service:dependencies --configuration testCompileClasspath 2>&1 | grep -E \"\\(spring-boot-starter-test|spring-boot-test|jackson|Mockito|mockito|assertj\\)\")",
+      "Bash(./gradlew :user-service:dependencies --configuration testCompileClasspath 2>&1 | grep -i \"webmvc-test\\\\|webmvc\\\\.test\\\\|spring-test\\\\|servlet\" | head -20)",
+      "Bash(./gradlew :user-service:dependencies --configuration testCompileClasspath 2>&1 | grep -A2 \"spring-boot-starter-webmvc-test\")",
+      "Bash(./gradlew :user-service:dependencies --configuration testCompileClasspath 2>&1 | grep -A10 \"spring-boot-starter-webmvc-test\")",
+      "Bash(xargs -I{} jar tf {})"
+    ]
+  }
+}
