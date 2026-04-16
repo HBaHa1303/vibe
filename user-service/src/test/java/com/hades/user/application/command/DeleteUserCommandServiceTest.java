@@ -10,6 +10,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -17,8 +18,9 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import java.util.Optional;
 import java.util.UUID;
 
-import static org.assertj.core.api.Assertions.assertThatCode;
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
@@ -44,14 +46,16 @@ class DeleteUserCommandServiceTest {
     class Execute {
 
         @Test
-        @DisplayName("should deactivate user successfully")
-        void shouldDeactivateSuccessfully() {
+        @DisplayName("should deactivate user and save deactivated state")
+        void shouldDeactivateAndSaveDeactivatedUser() {
             when(userRepository.findById(userId)).thenReturn(Optional.of(activeUser));
-            when(userRepository.save(any(User.class))).thenReturn(activeUser);
+            when(userRepository.save(any(User.class))).thenAnswer(inv -> inv.getArgument(0));
 
-            assertThatCode(() -> service.execute(userId)).doesNotThrowAnyException();
+            service.execute(userId);
 
-            verify(userRepository).save(any(User.class));
+            var userCaptor = ArgumentCaptor.forClass(User.class);
+            verify(userRepository).save(userCaptor.capture());
+            assertThat(userCaptor.getValue().isActive()).isFalse();
         }
 
         @Test

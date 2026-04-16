@@ -10,6 +10,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -17,8 +18,9 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import java.util.Optional;
 import java.util.UUID;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.assertj.core.api.Assertions.assertThatCode;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
@@ -44,19 +46,29 @@ class UpdateUserCommandServiceTest {
     class Execute {
 
         @Test
-        @DisplayName("should update user successfully")
-        void shouldUpdateSuccessfully() {
+        @DisplayName("should update user and save with correct new values")
+        void shouldUpdateUserWithCorrectValues() {
             when(userRepository.findById(userId)).thenReturn(Optional.of(existingUser));
             when(userRepository.existsByEmail("new@example.com")).thenReturn(false);
             when(userRepository.existsByUsername("new_name")).thenReturn(false);
-            when(userRepository.save(any(User.class))).thenReturn(existingUser);
+            when(userRepository.save(any(User.class))).thenAnswer(inv -> inv.getArgument(0));
 
             var command = new UpdateUserCommand(userId, "new_name", "new@example.com",
                     "New Name", "456", "New Address", "new.png");
+            service.execute(command);
 
-            assertThatCode(() -> service.execute(command)).doesNotThrowAnyException();
+            var userCaptor = ArgumentCaptor.forClass(User.class);
+            verify(userRepository).save(userCaptor.capture());
+            var saved = userCaptor.getValue();
 
-            verify(userRepository).save(any(User.class));
+            assertThat(saved.getUsername().getValue()).isEqualTo("new_name");
+            assertThat(saved.getEmail().getValue()).isEqualTo("new@example.com");
+            assertThat(saved.getFullName()).isEqualTo("New Name");
+            assertThat(saved.getPhone()).isEqualTo("456");
+            assertThat(saved.getAddress()).isEqualTo("New Address");
+            assertThat(saved.getAvatar()).isEqualTo("new.png");
+            assertThat(saved.getRole()).isEqualTo(UserRole.USER);
+            assertThat(saved.isActive()).isTrue();
         }
 
         @Test
@@ -75,7 +87,7 @@ class UpdateUserCommandServiceTest {
         }
 
         @Test
-        @DisplayName("should throw when new email already exists")
+        @DisplayName("should throw when new email already belongs to another user")
         void shouldThrowWhenNewEmailExists() {
             when(userRepository.findById(userId)).thenReturn(Optional.of(existingUser));
             when(userRepository.existsByEmail("taken@example.com")).thenReturn(true);
@@ -91,7 +103,7 @@ class UpdateUserCommandServiceTest {
         }
 
         @Test
-        @DisplayName("should throw when new username already exists")
+        @DisplayName("should throw when new username already belongs to another user")
         void shouldThrowWhenNewUsernameExists() {
             when(userRepository.findById(userId)).thenReturn(Optional.of(existingUser));
             when(userRepository.existsByUsername("taken_name")).thenReturn(true);
@@ -107,35 +119,37 @@ class UpdateUserCommandServiceTest {
         }
 
         @Test
-        @DisplayName("should allow keeping same email without duplicate check")
-        void shouldAllowSameEmail() {
+        @DisplayName("should allow update when keeping same email and same username")
+        void shouldAllowKeepingSameEmailAndUsername() {
             when(userRepository.findById(userId)).thenReturn(Optional.of(existingUser));
-            when(userRepository.save(any(User.class))).thenReturn(existingUser);
+            when(userRepository.save(any(User.class))).thenAnswer(inv -> inv.getArgument(0));
 
             var command = new UpdateUserCommand(userId, "john_doe", "john@example.com",
                     "Updated Name", null, null, null);
+            service.execute(command);
 
-            assertThatCode(() -> service.execute(command)).doesNotThrowAnyException();
-
-            verify(userRepository, never()).existsByEmail(anyString());
-            verify(userRepository, never()).existsByUsername(anyString());
-            verify(userRepository).save(any(User.class));
+            var userCaptor = ArgumentCaptor.forClass(User.class);
+            verify(userRepository).save(userCaptor.capture());
+            assertThat(userCaptor.getValue().getFullName()).isEqualTo("Updated Name");
+            assertThat(userCaptor.getValue().getUsername().getValue()).isEqualTo("john_doe");
+            assertThat(userCaptor.getValue().getEmail().getValue()).isEqualTo("john@example.com");
         }
 
         @Test
-        @DisplayName("should allow keeping same username without duplicate check")
-        void shouldAllowSameUsername() {
+        @DisplayName("should allow update when keeping same username but changing email")
+        void shouldAllowSameUsernameWithNewEmail() {
             when(userRepository.findById(userId)).thenReturn(Optional.of(existingUser));
             when(userRepository.existsByEmail("new@example.com")).thenReturn(false);
-            when(userRepository.save(any(User.class))).thenReturn(existingUser);
+            when(userRepository.save(any(User.class))).thenAnswer(inv -> inv.getArgument(0));
 
             var command = new UpdateUserCommand(userId, "john_doe", "new@example.com",
                     "Updated Name", null, null, null);
+            service.execute(command);
 
-            assertThatCode(() -> service.execute(command)).doesNotThrowAnyException();
-
-            verify(userRepository, never()).existsByUsername(anyString());
-            verify(userRepository).save(any(User.class));
+            var userCaptor = ArgumentCaptor.forClass(User.class);
+            verify(userRepository).save(userCaptor.capture());
+            assertThat(userCaptor.getValue().getEmail().getValue()).isEqualTo("new@example.com");
+            assertThat(userCaptor.getValue().getUsername().getValue()).isEqualTo("john_doe");
         }
     }
 }

@@ -21,8 +21,8 @@ class UserTest {
     class Create {
 
         @Test
-        @DisplayName("should create user with required fields")
-        void shouldCreateUser() {
+        @DisplayName("should create active user with all required fields populated")
+        void shouldCreateActiveUserWithAllFields() {
             var user = User.create(validUsername, validEmail, "John Doe", "123456",
                     "123 Street", "avatar.png", UserRole.USER);
 
@@ -36,16 +36,37 @@ class UserTest {
             assertThat(user.getRole()).isEqualTo(UserRole.USER);
             assertThat(user.isActive()).isTrue();
             assertThat(user.getLastLoginAt()).isNull();
-            assertThat(user.getCreatedAt()).isNotNull();
-            assertThat(user.getUpdatedAt()).isNotNull();
         }
 
         @Test
-        @DisplayName("should set createdAt and updatedAt to same value")
-        void shouldSetTimestamps() {
+        @DisplayName("should create user with null optional fields")
+        void shouldCreateUserWithNullOptionals() {
+            var user = User.create(validUsername, validEmail, null, null, null, null, UserRole.USER);
+
+            assertThat(user.getFullName()).isNull();
+            assertThat(user.getPhone()).isNull();
+            assertThat(user.getAddress()).isNull();
+            assertThat(user.getAvatar()).isNull();
+        }
+
+        @Test
+        @DisplayName("should set createdAt and updatedAt to same timestamp")
+        void shouldSetCreatedAtAndUpdatedAtEqually() {
+            var before = LocalDateTime.now();
             var user = User.create(validUsername, validEmail, "John", null, null, null, UserRole.USER);
+            var after = LocalDateTime.now();
 
             assertThat(user.getCreatedAt()).isEqualTo(user.getUpdatedAt());
+            assertThat(user.getCreatedAt()).isBetween(before, after);
+        }
+
+        @Test
+        @DisplayName("should generate unique id for each user")
+        void shouldGenerateUniqueId() {
+            var user1 = User.create(validUsername, validEmail, "A", null, null, null, UserRole.USER);
+            var user2 = User.create(Username.of("jane_doe"), Email.of("jane@example.com"), "B", null, null, null, UserRole.USER);
+
+            assertThat(user1.getId()).isNotEqualTo(user2.getId());
         }
 
         @Test
@@ -73,7 +94,7 @@ class UserTest {
         }
 
         @Test
-        @DisplayName("should create with admin role")
+        @DisplayName("should create user with ADMIN role")
         void shouldCreateWithAdminRole() {
             var user = User.create(validUsername, validEmail, "Admin", null, null, null, UserRole.ADMIN);
 
@@ -86,8 +107,8 @@ class UserTest {
     class Reconstitute {
 
         @Test
-        @DisplayName("should rebuild user with all fields")
-        void shouldRebuildUser() {
+        @DisplayName("should rebuild user preserving all fields exactly")
+        void shouldRebuildUserWithAllFields() {
             var id = UUID.randomUUID();
             var createdAt = LocalDateTime.now().minusDays(1);
             var updatedAt = LocalDateTime.now();
@@ -109,6 +130,18 @@ class UserTest {
             assertThat(user.getCreatedAt()).isEqualTo(createdAt);
             assertThat(user.getUpdatedAt()).isEqualTo(updatedAt);
         }
+
+        @Test
+        @DisplayName("should not validate or mutate any field")
+        void shouldNotValidateFields() {
+            var id = UUID.randomUUID();
+
+            var user = User.reconstitute(id, null, null, null, null, null, null, null, false, null, null, null);
+
+            assertThat(user.getId()).isEqualTo(id);
+            assertThat(user.getUsername()).isNull();
+            assertThat(user.getEmail()).isNull();
+        }
     }
 
     @Nested
@@ -116,8 +149,8 @@ class UserTest {
     class UpdateProfile {
 
         @Test
-        @DisplayName("should update profile fields")
-        void shouldUpdateProfile() {
+        @DisplayName("should update all profile fields and change updatedAt")
+        void shouldUpdateAllProfileFields() {
             var user = User.create(validUsername, validEmail, "Old Name", null, null, null, UserRole.USER);
             var updatedAtBefore = user.getUpdatedAt();
 
@@ -132,6 +165,21 @@ class UserTest {
             assertThat(user.getAddress()).isEqualTo("New Address");
             assertThat(user.getAvatar()).isEqualTo("new.png");
             assertThat(user.getUpdatedAt()).isAfterOrEqualTo(updatedAtBefore);
+        }
+
+        @Test
+        @DisplayName("should not change id, role, isActive, or createdAt")
+        void shouldNotChangeImmutableFields() {
+            var user = User.create(validUsername, validEmail, "Old", null, null, null, UserRole.USER);
+            var originalId = user.getId();
+            var originalCreatedAt = user.getCreatedAt();
+
+            user.updateProfile(Username.of("updated"), Email.of("updated@test.com"), "New", null, null, null);
+
+            assertThat(user.getId()).isEqualTo(originalId);
+            assertThat(user.getRole()).isEqualTo(UserRole.USER);
+            assertThat(user.isActive()).isTrue();
+            assertThat(user.getCreatedAt()).isEqualTo(originalCreatedAt);
         }
 
         @Test
@@ -160,14 +208,15 @@ class UserTest {
     class Deactivate {
 
         @Test
-        @DisplayName("should deactivate active user")
-        void shouldDeactivate() {
+        @DisplayName("should set isActive to false and update updatedAt")
+        void shouldSetInactiveAndUpdateTimestamp() {
             var user = User.create(validUsername, validEmail, "John", null, null, null, UserRole.USER);
+            var updatedAtBefore = user.getUpdatedAt();
 
             user.deactivate();
 
             assertThat(user.isActive()).isFalse();
-            assertThat(user.getUpdatedAt()).isNotNull();
+            assertThat(user.getUpdatedAt()).isAfterOrEqualTo(updatedAtBefore);
         }
 
         @Test
@@ -180,6 +229,23 @@ class UserTest {
                     .isInstanceOf(UserDomainException.class)
                     .hasMessage("User is already deactivated");
         }
+
+        @Test
+        @DisplayName("should not change any other field")
+        void shouldNotChangeOtherFields() {
+            var user = User.create(validUsername, validEmail, "John", "123", "Addr", "av.png", UserRole.ADMIN);
+            var originalId = user.getId();
+            var originalCreatedAt = user.getCreatedAt();
+
+            user.deactivate();
+
+            assertThat(user.getId()).isEqualTo(originalId);
+            assertThat(user.getUsername()).isEqualTo(validUsername);
+            assertThat(user.getEmail()).isEqualTo(validEmail);
+            assertThat(user.getFullName()).isEqualTo("John");
+            assertThat(user.getRole()).isEqualTo(UserRole.ADMIN);
+            assertThat(user.getCreatedAt()).isEqualTo(originalCreatedAt);
+        }
     }
 
     @Nested
@@ -187,15 +253,30 @@ class UserTest {
     class RecordLogin {
 
         @Test
-        @DisplayName("should set lastLoginAt and updatedAt")
-        void shouldSetLastLoginAt() {
+        @DisplayName("should set lastLoginAt from null to a value and update updatedAt")
+        void shouldSetLastLoginAtFromNull() {
             var user = User.create(validUsername, validEmail, "John", null, null, null, UserRole.USER);
             assertThat(user.getLastLoginAt()).isNull();
+            var updatedAtBefore = user.getUpdatedAt();
 
             user.recordLogin();
 
             assertThat(user.getLastLoginAt()).isNotNull();
-            assertThat(user.getUpdatedAt()).isNotNull();
+            assertThat(user.getUpdatedAt()).isAfterOrEqualTo(updatedAtBefore);
+        }
+
+        @Test
+        @DisplayName("should update lastLoginAt on subsequent calls")
+        void shouldUpdateLastLoginOnSubsequentCalls() throws InterruptedException {
+            var user = User.create(validUsername, validEmail, "John", null, null, null, UserRole.USER);
+
+            user.recordLogin();
+            var firstLogin = user.getLastLoginAt();
+
+            Thread.sleep(10);
+            user.recordLogin();
+
+            assertThat(user.getLastLoginAt()).isAfter(firstLogin);
         }
     }
 
@@ -204,7 +285,7 @@ class UserTest {
     class Equality {
 
         @Test
-        @DisplayName("should be equal when same id")
+        @DisplayName("should be equal when same id regardless of other fields")
         void shouldBeEqualWhenSameId() {
             var id = UUID.randomUUID();
             var user1 = User.reconstitute(id, validUsername, validEmail, "A", null, null, null, UserRole.USER, true, null, null, null);
@@ -224,11 +305,27 @@ class UserTest {
         }
 
         @Test
+        @DisplayName("should be reflexive")
+        void shouldBeReflexive() {
+            var user = User.create(validUsername, validEmail, "John", null, null, null, UserRole.USER);
+
+            assertThat(user).isEqualTo(user);
+        }
+
+        @Test
         @DisplayName("should not be equal to null")
         void shouldNotBeEqualToNull() {
             var user = User.create(validUsername, validEmail, "John", null, null, null, UserRole.USER);
 
             assertThat(user).isNotEqualTo(null);
+        }
+
+        @Test
+        @DisplayName("should not be equal to different type")
+        void shouldNotBeEqualToDifferentType() {
+            var user = User.create(validUsername, validEmail, "John", null, null, null, UserRole.USER);
+
+            assertThat(user).isNotEqualTo("not a user");
         }
     }
 }
