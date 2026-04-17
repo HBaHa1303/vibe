@@ -12,144 +12,69 @@ paths:
 
 ---
 
-## CQRS Separation
-
-### Command Side
+## Command Side
 
 - Depends on domain layer (repository ports, entities, value objects)
-- Orchestrates domain logic through domain entities
-- Manages transaction boundaries (`@Transactional`)
+- Orchestrates domain logic, manages transactions (`@Transactional`)
+- Must NOT import from infrastructure
+- Returns void or simple type (e.g., UUID)
 
-### Query Side
+### CommandService
 
-- Depends on infrastructure layer directly (JPA repositories)
-- Bypasses domain layer entirely
-- Read-optimized: maps JPA entities directly to response DTOs
-- Domain is only concerned with invariants, business rules, aggregates
-- Queries have no business rules, so no need for domain layer
+- `@Service`, `@Transactional`
+- Constructs Value Objects, checks preconditions, calls domain factory methods
+- Naming: `<Verb><Aggregate>CommandService`
 
----
+### Command Objects
 
-## Command
-
-- Annotated with `@Service` and `@Transactional`
-- Changes state
-- Must NOT return domain entities
-- Returns void or result type (e.g., UUID)
-- Depends on domain repository port (NOT JPA repository directly)
-
-Naming: `<Verb><Aggregate>CommandService`
-
-Example:
-```java
-@Service
-@RequiredArgsConstructor
-public class CreateUserCommandService {
-    private final UserRepository userRepository; // domain port
-
-    @Transactional
-    public UUID execute(CreateUserCommand command) {
-        // construct VOs, check preconditions, call domain factory, save
-    }
-}
-```
+- Java records, raw values only (String, UUID), NOT Value Objects
+- Naming: `<Verb><Aggregate>Command`
 
 ---
 
-## Query
+## Query Side
 
-- Annotated with `@Service` and `@Transactional(readOnly = true)`
-- Read-only
-- Must NOT modify state
-- Returns DTO or projection only
-- Uses JPA repository directly (NOT domain repository port)
-- Maps JPA entity fields directly to DTO fields (flat mapping, no VOs)
-- Contains a private `toResponse()` helper for JPA entity -> DTO mapping
-
-Naming: `<Aggregate>QueryService`
-
-Example:
-```java
-@Service
-@RequiredArgsConstructor
-@Transactional(readOnly = true)
-public class UserQueryService {
-    private final UserJpaRepository userJpaRepository; // direct JPA access
-
-    public UserResponse getUserById(UUID id) {
-        var entity = userJpaRepository.findById(id)
-                .orElseThrow(() -> new NoSuchElementException("..."));
-        return toResponse(entity);
-    }
-
-    private UserResponse toResponse(UserJpaEntity entity) {
-        return new UserResponse(entity.getId(), entity.getUsername(), ...);
-    }
-}
-```
-
----
-
-## Command Objects
-
-- Use Java records
-- Named: `<Verb><Aggregate>Command`
-- Contain raw values (String, UUID), NOT Value Objects
-
-Examples:
-- `CreateUserCommand(String username, String email, String role, ...)`
-- `UpdateUserCommand(UUID userId, String username, String email, ...)`
-
----
-
-## Response DTOs
-
-- Use Java records
-- Named: `<Aggregate>Response`, `<Aggregate>PageResponse`
-- Flat structure with primitive/standard types only
-
-Examples:
-- `UserResponse(UUID id, String username, String email, ...)`
-- `UserPageResponse(List<UserResponse> content, int page, ...)`
-
----
-
-## Dependency Rules
-
-### Command Side
-- CommandService -> Domain Repository Port -> RepositoryAdapter -> JPA
-- Must NOT import from infrastructure directly
-
-### Query Side
-- QueryService -> JPA Repository directly
+- Depends on infrastructure directly (JPA repositories)
+- Bypasses domain layer entirely (read-optimized)
 - Must NOT import from domain layer
-- Must NOT use domain entities or value objects
+
+### QueryService
+
+- `@Service`, `@Transactional(readOnly = true)`
+- Uses JPA repository + QueryMapper
+- Must NOT contain private mapping helpers
+- Returns Result types only
+- Naming: `<Aggregate>QueryService`
+
+### QueryMapper
+
+- MapStruct `@Mapper(componentModel = "spring")`, lives in same package as QueryService
+- `toResult(JpaEntity)` → `<Aggregate>Result`
+- `toPageResult(Page<JpaEntity>)` → `PageResult<AggregateResult>`
+- Use `@Mapping(target = "isActive", source = "active")` for boolean mismatch
+
+---
+
+## Result Types
+
+- Java records, flat primitive/standard types
+- Returned by QueryService to Presentation layer
+- Naming: `<Aggregate>Result`
+- Pagination: use generic `PageResult<T>` from common
 
 ---
 
 ## Must
 
-- Command side: construct Value Objects, check preconditions, use domain factory methods
-- Query side: use JPA repository directly, map flat fields to DTOs
-- Return DTOs only (never domain entities)
+- Command side: construct VOs, check preconditions, use domain factory methods
+- Query side: use JPA repository + QueryMapper directly
+- Return Results only (never domain entities)
 - Keep Command and Query completely separate
-
----
 
 ## Must NOT
 
-- Contain business logic (business rules belong in domain)
-- Command side: import from infrastructure directly
+- Contain business logic
+- Command side: import from infrastructure
 - Query side: import from domain layer
 - Mix command and query concerns
 - Return domain entities or JPA entities
-
----
-
-# Enforcement
-
-- No business rules in CommandService or QueryService
-- CommandService must use domain repository port, NOT JPA repository
-- QueryService must use JPA repository, NOT domain repository port
-- No domain entities in return types
-- No mixing of command and query dependencies

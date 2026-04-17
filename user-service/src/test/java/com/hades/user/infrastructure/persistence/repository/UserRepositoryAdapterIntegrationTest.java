@@ -19,7 +19,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 @DataJpaTest
 @ActiveProfiles("test")
-@Import({UserRepositoryAdapter.class, com.hades.user.infrastructure.persistence.mapper.UserPersistenceMapper.class})
+@Import({UserRepositoryAdapter.class, com.hades.user.infrastructure.persistence.mapper.UserPersistenceMapperImpl.class})
 class UserRepositoryAdapterIntegrationTest {
 
     @Autowired

@@ -1,9 +1,9 @@
 package com.hades.user.presentation.controller;
 
-import com.hades.user.application.dto.UserPageResponse;
-import com.hades.user.application.dto.UserResponse;
+import com.hades.common.model.PageResult;
+import com.hades.user.application.dto.UserResult;
 import com.hades.user.application.query.UserQueryService;
-import com.hades.user.presentation.mapper.UserDtoMapper;
+import com.hades.user.presentation.mapper.UserDtoMapperImpl;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -23,7 +23,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 @WebMvcTest(UserQueryController.class)
-@Import(UserDtoMapper.class)
+@Import(UserDtoMapperImpl.class)
 class UserQueryControllerTest {
 
     @Autowired
@@ -32,8 +32,8 @@ class UserQueryControllerTest {
     @MockitoBean
     private UserQueryService userQueryService;
 
-    private UserResponse createUserResponse() {
-        return new UserResponse(
+    private UserResult createUserResult() {
+        return new UserResult(
                 UUID.randomUUID(), "john_doe", "john@example.com", "John Doe",
                 "123", "Address", "avatar.png", "USER", true,
                 null, LocalDateTime.now(), LocalDateTime.now()
@@ -45,15 +45,15 @@ class UserQueryControllerTest {
     class GetUserById {
 
         @Test
-        @DisplayName("should return 200 with user detail JSON body")
-        void shouldReturn200WithDetailResponse() throws Exception {
-            var response = createUserResponse();
+        @DisplayName("should return 200 with user JSON body")
+        void shouldReturn200WithUserResponse() throws Exception {
+            var result = createUserResult();
 
-            when(userQueryService.getUserById(response.id())).thenReturn(response);
+            when(userQueryService.getUserById(result.id())).thenReturn(result);
 
-            mockMvc.perform(get("/api/users/{id}", response.id()))
+            mockMvc.perform(get("/api/users/{id}", result.id()))
                     .andExpect(status().isOk())
-                    .andExpect(jsonPath("$.id").value(response.id().toString()))
+                    .andExpect(jsonPath("$.id").value(result.id().toString()))
                     .andExpect(jsonPath("$.username").value("john_doe"))
                     .andExpect(jsonPath("$.email").value("john@example.com"))
                     .andExpect(jsonPath("$.fullName").value("John Doe"))
@@ -76,7 +76,7 @@ class UserQueryControllerTest {
 
             mockMvc.perform(get("/api/users/{id}", id))
                     .andExpect(status().isNotFound())
-                    .andExpect(jsonPath("$.message").value("User not found with id: " + id))
+                    .andExpect(jsonPath("$.detail").value("User not found with id: " + id))
                     .andExpect(jsonPath("$.status").value(404));
         }
     }
@@ -86,43 +86,43 @@ class UserQueryControllerTest {
     class GetAllUsers {
 
         @Test
-        @DisplayName("should return 200 with paginated response containing content and metadata")
+        @DisplayName("should return 200 with paginated response containing data and paging")
         void shouldReturn200WithPaginatedResponse() throws Exception {
-            var response = createUserResponse();
-            var appPage = new UserPageResponse(List.of(response), 0, 20, 1, 1);
+            var result = createUserResult();
+            var pageResult = new PageResult<>(List.of(result), 0, 20, 1, 1);
 
-            when(userQueryService.getAllUsers(0, 20)).thenReturn(appPage);
+            when(userQueryService.getAllUsers(0, 20)).thenReturn(pageResult);
 
             mockMvc.perform(get("/api/users")
                             .param("page", "0")
                             .param("size", "20"))
                     .andExpect(status().isOk())
-                    .andExpect(jsonPath("$.content").isArray())
-                    .andExpect(jsonPath("$.content[0].id").value(response.id().toString()))
-                    .andExpect(jsonPath("$.content[0].username").value("john_doe"))
-                    .andExpect(jsonPath("$.content[0].email").value("john@example.com"))
-                    .andExpect(jsonPath("$.content[0].fullName").value("John Doe"))
-                    .andExpect(jsonPath("$.content[0].role").value("USER"))
-                    .andExpect(jsonPath("$.content[0].isActive").value(true))
-                    .andExpect(jsonPath("$.page").value(0))
-                    .andExpect(jsonPath("$.size").value(20))
-                    .andExpect(jsonPath("$.totalElements").value(1))
-                    .andExpect(jsonPath("$.totalPages").value(1));
+                    .andExpect(jsonPath("$.data").isArray())
+                    .andExpect(jsonPath("$.data[0].id").value(result.id().toString()))
+                    .andExpect(jsonPath("$.data[0].username").value("john_doe"))
+                    .andExpect(jsonPath("$.data[0].email").value("john@example.com"))
+                    .andExpect(jsonPath("$.data[0].fullName").value("John Doe"))
+                    .andExpect(jsonPath("$.data[0].role").value("USER"))
+                    .andExpect(jsonPath("$.data[0].isActive").value(true))
+                    .andExpect(jsonPath("$.paging.page").value(0))
+                    .andExpect(jsonPath("$.paging.size").value(20))
+                    .andExpect(jsonPath("$.paging.totalElements").value(1))
+                    .andExpect(jsonPath("$.paging.totalPages").value(1));
         }
 
         @Test
         @DisplayName("should use default pagination params when not provided")
         void shouldUseDefaultPagination() throws Exception {
-            var appPage = new UserPageResponse(List.of(), 0, 20, 0, 0);
+            PageResult<UserResult> pageResult = new PageResult<>(List.of(), 0, 20, 0, 0);
 
-            when(userQueryService.getAllUsers(0, 20)).thenReturn(appPage);
+            when(userQueryService.getAllUsers(0, 20)).thenReturn(pageResult);
 
             mockMvc.perform(get("/api/users"))
                     .andExpect(status().isOk())
-                    .andExpect(jsonPath("$.content").isEmpty())
-                    .andExpect(jsonPath("$.page").value(0))
-                    .andExpect(jsonPath("$.size").value(20))
-                    .andExpect(jsonPath("$.totalElements").value(0));
+                    .andExpect(jsonPath("$.data").isEmpty())
+                    .andExpect(jsonPath("$.paging.page").value(0))
+                    .andExpect(jsonPath("$.paging.size").value(20))
+                    .andExpect(jsonPath("$.paging.totalElements").value(0));
         }
     }
 }

@@ -7,20 +7,8 @@ paths:
 
 ## General
 
-- Contains technical implementations
-- Can use Spring, JPA, annotations
-- Implements repository interfaces (ports) defined in domain
-
----
-
-## Contains
-
-- JPA Entities (persistence model)
-- Spring Data JPA Repositories
-- Repository Adapters (implement domain port)
-- Persistence Mappers
-- External API clients
-- Messaging configurations
+- Technical implementations using Spring, JPA
+- Implements repository ports from domain layer
 
 ---
 
@@ -29,96 +17,57 @@ paths:
 ```
 infrastructure/
 └── persistence/
-    ├── entity/
-    │   └── <Aggregate>JpaEntity.java
-    ├── repository/
-    │   ├── <Aggregate>JpaRepository.java      # Spring Data interface
-    │   └── <Aggregate>RepositoryAdapter.java   # Implements domain port
-    └── mapper/
-        └── <Aggregate>PersistenceMapper.java
+    ├── entity/<Aggregate>JpaEntity.java
+    ├── repository/<Aggregate>JpaRepository.java
+    ├── repository/<Aggregate>RepositoryAdapter.java
+    └── mapper/<Aggregate>PersistenceMapper.java
 ```
 
 ---
 
-## JPA Entity
+## JpaEntity
 
-- Annotated with `@Entity`, `@Table`
-- Use Lombok: `@Getter`, `@Setter`, `@Builder`, `@NoArgsConstructor`, `@AllArgsConstructor`
-- Fields map to database columns
-- Naming: `<Aggregate>JpaEntity`
-- Must NOT contain business logic
-- Must NOT be exposed to upper layers
+- `@Entity`, `@Table`, Lombok `@Getter @Setter @Builder @NoArgsConstructor @AllArgsConstructor`
+- Must NOT contain business logic, must NOT be exposed to upper layers
 
 ---
 
-## Spring Data JPA Repository
+## JpaRepository
 
 - Extends `JpaRepository<JpaEntity, UUID>`
 - Custom query methods for existence checks
-- Naming: `<Aggregate>JpaRepository`
 
 ---
 
-## Repository Adapter
+## RepositoryAdapter
 
-- Annotated with `@Repository`
-- Implements domain repository interface (port)
-- Injected: Spring Data JPA repository + Persistence mapper
-- Converts between Spring's `Page` and domain's `PageResult`
+- `@Repository`, implements domain repository port
+- Injected: JpaRepository + PersistenceMapper
+- Converts Spring `Page` → domain `PageResult`
 - Naming: `<Aggregate>RepositoryAdapter` (NOT `Impl`)
 
-Example:
-```java
-@Repository
-@RequiredArgsConstructor
-public class UserRepositoryAdapter implements UserRepository {
-    private final UserJpaRepository jpaRepository;
-    private final UserPersistenceMapper mapper;
-
-    @Override
-    public User save(User user) {
-        var entity = mapper.toEntity(user);
-        var saved = jpaRepository.save(entity);
-        return mapper.toDomain(saved);
-    }
-}
-```
-
 ---
 
-## Persistence Mapper
+## PersistenceMapper
 
-- Annotated with `@Component`
-- Two main methods:
-    - `toDomain(JpaEntity)` -> Domain entity (uses `reconstitute()` factories)
-    - `toEntity(DomainEntity)` -> JPA entity (extracts VO values)
-- Batch method: `toDomainList(List<JpaEntity>)`
-- Uses `ValueObject.reconstitute()` (NOT `of()`) when mapping from DB
-- Uses `valueObject.getValue()` when mapping to JPA entity
-- Naming: `<Aggregate>PersistenceMapper`
+- MapStruct `@Mapper(componentModel = "spring")`
+- `toDomain(JpaEntity)` → Domain — use `default` method calling `reconstitute()`
+- `toEntity(Domain)` → JPA — auto-generated via `@Builder`
+- `@Named` default methods for Value Object conversions (e.g., `fromUsername`)
+- `@Mapping(target = "isActive", source = "active")` for boolean mismatch
+- Uses `ValueObject.reconstitute()` (NOT `of()`) for DB → Domain mapping
 
 ---
 
 ## Must
 
-- Implement repository interfaces defined in domain
-- Map between persistence model and domain model
-- Use `reconstitute()` for Value Objects when loading from DB
-- Use `PageResult` from common module (not Spring Page in port interface)
-
----
+- Implement repository ports from domain
+- Map between persistence and domain models via MapStruct
+- Use `reconstitute()` for Value Objects from DB
+- Use `PageResult` from common (not Spring Page in port interface)
 
 ## Must NOT
 
 - Contain business logic
-- Leak JPA entities to domain or application layer
-- Call domain behavior methods (domain handles its own state)
-- Use `ValueObject.of()` for reconstitution (use `reconstitute()` instead)
-
----
-
-# Enforcement
-
-- No business rules in repository implementations
-- No returning JPA entities to upper layers
-- No `Impl` suffix (use `Adapter`)
+- Leak JPA entities to upper layers
+- Use `@Component` on mapper (MapStruct generates it)

@@ -2,136 +2,79 @@
 
 ## General
 
-- Code must be clean, readable, and production-ready
-- Follow SOLID principles
-- Prefer composition over inheritance
+- Clean, readable, production-ready code
+- SOLID principles, prefer composition over inheritance
+- Single responsibility per class and method
+- Methods: short, focused, max 2-3 nesting levels
 
 ---
 
 ## Multi-Module Project
 
-- Root `build.gradle.kts` contains shared config: plugins, Java version, repositories, subprojects block
-- Sub-module `build.gradle.kts` only adds service-specific dependencies
-- `settings.gradle.kts` includes all sub-modules
+- Root `build.gradle.kts`: shared config (plugins, Java version, repositories)
+- Sub-module `build.gradle.kts`: service-specific dependencies only
 - Common module: pure Java library, no Spring Boot plugin
 - Service modules: Spring Boot apps, each runs independently
-
----
-
-## Class Design
-
-- Each class must have a single responsibility
-- Avoid god classes
-- Keep classes small and focused
-
----
-
-## Method Design
-
-- Methods must be short and focused
-- One responsibility per method
-- Avoid deep nesting (max 2-3 levels)
+- MapStruct + Lombok: keep `lombok-mapstruct-binding` in annotation processors
 
 ---
 
 ## Immutability
 
 - Prefer immutable objects
-- Value Objects must be immutable (final class, final fields, no setters)
-- Use Java records for DTOs, Commands, Queries
+- Value Objects: final class, final fields, `@Getter`
+- Use Java records for DTOs, Commands, Results
 
 ---
 
 ## Null Handling
 
-- Avoid returning null
-- Use Optional or explicit handling
-- Guard clauses at the start of methods for null checks
+- Avoid returning null, use Optional or explicit handling
+- Guard clauses at method start for null checks
+- Domain `create()`: validate required fields, allow optional (phone, address, avatar)
+- Domain `reconstitute()`: only guard `id` via `Objects.requireNonNull`
 
 ---
 
 ## Error Handling
 
-- Use domain exceptions for business rule violations
-- Base exception `DomainException` in common module
-- Each domain extends with specific exceptions (e.g., `UserDomainException`)
-- `@RestControllerAdvice` for mapping exceptions to HTTP responses
-- Do not swallow exceptions
-- Provide meaningful error messages
-
----
-
-## Logging
-
-- Log only meaningful events
-- Do not log sensitive data
+- Domain exceptions extend `DomainException` from common
+- `@RestControllerAdvice` returns `ProblemDetail` (RFC 7807)
+- Fields: `type`, `title`, `status`, `detail`, `instance`
+- Do not swallow exceptions, provide meaningful messages
 
 ---
 
 ## Mapping
 
-- Always separate three models:
-    - Domain model (entities, value objects)
-    - Persistence model (JPA entities)
-    - Presentation model (request/response DTOs)
-
-- Use dedicated Mapper classes:
-    - `PersistenceMapper` for JPA entity <-> Domain entity
-    - `DtoMapper` for presentation DTO <-> application command/response
-
-- No mapping logic in controller or domain
+- Always separate three models: Domain, Persistence (JPA), Presentation (DTO)
+- MapStruct `@Mapper(componentModel = "spring")` for all mappers
+- Use `default` methods for mappings MapStruct cannot auto-generate
+- Use `@Named` + `qualifiedByName` for custom Value Object conversions
+- Keep `lombok-mapstruct-binding` in annotation processors
 
 ---
 
 ## Dependency Rules
 
-- Follow dependency direction:
-    - presentation -> application -> domain
-    - infrastructure -> domain/application via interfaces
+- Direction: presentation → application → domain
+- Infrastructure → domain/application via interfaces
+- Domain: NO dependencies on any other layer
 - Service modules depend on common module
-- Domain layer has NO dependencies on any other layer
 
 ---
 
 ## CQRS
 
 - Separate command and query logic
-- Do not mix read/write models
-- CommandService: @Transactional, modifies state
-- QueryService: @Transactional(readOnly = true), read-only
-
----
-
-## Clean Architecture
-
-- Domain must be independent
-- No framework code in domain
-- Repository interfaces (ports) defined in domain
-- Repository implementations (adapters) in infrastructure
+- CommandService: `@Transactional`, modifies state
+- QueryService: `@Transactional(readOnly = true)`, read-only
 
 ---
 
 ## Anti-Patterns (MUST NOT)
 
-- Business logic in controller
-- Business logic in repository
-- Business logic in infrastructure
+- Business logic in controller, repository, or infrastructure
 - Returning entity directly from API
+- `Impl` suffix (use `Adapter`)
 - Using repository in controller
-- `Impl` suffix (use `Adapter` instead)
-
----
-
-## Code Consistency
-
-- Follow consistent naming and structure
-- Do not mix multiple patterns in same module
-- All services follow the same internal structure (domain/application/infrastructure/presentation)
-
----
-
-# Enforcement
-
-- Any violation of layer boundaries is not allowed
-- Code must be easily testable
-- Code must be maintainable and readable

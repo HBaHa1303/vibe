@@ -1,11 +1,13 @@
 package com.hades.user.domain.model;
 
 import com.hades.user.domain.exception.UserDomainException;
+import lombok.Getter;
 
 import java.time.LocalDateTime;
 import java.util.Objects;
 import java.util.UUID;
 
+@Getter
 public class User {
 
     private final UUID id;
@@ -71,6 +73,7 @@ public class User {
                                     String phone, String address, String avatar, UserRole role,
                                     boolean isActive, LocalDateTime lastLoginAt,
                                     LocalDateTime createdAt, LocalDateTime updatedAt) {
+        Objects.requireNonNull(id, "id must not be null");
         return new User(id, username, email, fullName, phone, address, avatar,
                 role, isActive, lastLoginAt, createdAt, updatedAt);
     }
@@ -103,54 +106,6 @@ public class User {
     public void recordLogin() {
         this.lastLoginAt = LocalDateTime.now();
         this.updatedAt = LocalDateTime.now();
-    }
-
-    public UUID getId() {
-        return id;
-    }
-
-    public Username getUsername() {
-        return username;
-    }
-
-    public Email getEmail() {
-        return email;
-    }
-
-    public String getFullName() {
-        return fullName;
-    }
-
-    public String getPhone() {
-        return phone;
-    }
-
-    public String getAddress() {
-        return address;
-    }
-
-    public String getAvatar() {
-        return avatar;
-    }
-
-    public UserRole getRole() {
-        return role;
-    }
-
-    public boolean isActive() {
-        return isActive;
-    }
-
-    public LocalDateTime getLastLoginAt() {
-        return lastLoginAt;
-    }
-
-    public LocalDateTime getCreatedAt() {
-        return createdAt;
-    }
-
-    public LocalDateTime getUpdatedAt() {
-        return updatedAt;
     }
 
     @Override

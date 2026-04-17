@@ -1,15 +1,16 @@
 package com.hades.user.application.query;
 
-import com.hades.user.application.dto.UserPageResponse;
-import com.hades.user.application.dto.UserResponse;
+import com.hades.common.model.PageResult;
+import com.hades.user.application.dto.UserResult;
 import com.hades.user.domain.model.UserRole;
 import com.hades.user.infrastructure.persistence.entity.UserJpaEntity;
+import com.hades.user.application.query.UserQueryMapperImpl;
 import com.hades.user.infrastructure.persistence.repository.UserJpaRepository;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.domain.Page;
@@ -32,8 +33,12 @@ class UserQueryServiceTest {
     @Mock
     private UserJpaRepository userJpaRepository;
 
-    @InjectMocks
     private UserQueryService service;
+
+    @BeforeEach
+    void setUp() {
+        service = new UserQueryService(userJpaRepository, new UserQueryMapperImpl());
+    }
 
     private UserJpaEntity createJpaEntity() {
         return UserJpaEntity.builder()
@@ -100,9 +105,9 @@ class UserQueryServiceTest {
 
             when(userJpaRepository.findAll(pageRequest)).thenReturn(jpaPage);
 
-            UserPageResponse result = service.getAllUsers(0, 20);
+            PageResult<UserResult> result = service.getAllUsers(0, 20);
 
-            assertThat(result.content()).hasSize(1);
+            assertThat(result.data()).hasSize(1);
             assertThat(result.page()).isEqualTo(0);
             assertThat(result.size()).isEqualTo(20);
             assertThat(result.totalElements()).isEqualTo(1);
@@ -117,9 +122,9 @@ class UserQueryServiceTest {
 
             when(userJpaRepository.findAll(pageRequest)).thenReturn(emptyPage);
 
-            UserPageResponse result = service.getAllUsers(0, 20);
+            PageResult<UserResult> result = service.getAllUsers(0, 20);
 
-            assertThat(result.content()).isEmpty();
+            assertThat(result.data()).isEmpty();
             assertThat(result.totalElements()).isZero();
         }
     }

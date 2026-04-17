@@ -17,7 +17,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 class UserPersistenceMapperTest {
 
-    private final UserPersistenceMapper mapper = new UserPersistenceMapper();
+    private final UserPersistenceMapper mapper = new UserPersistenceMapperImpl();
 
     private User createDomainUser() {
         return User.reconstitute(

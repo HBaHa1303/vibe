@@ -4,7 +4,7 @@ import com.hades.user.application.command.CreateUserCommandService;
 import com.hades.user.application.command.DeleteUserCommandService;
 import com.hades.user.application.command.UpdateUserCommandService;
 import com.hades.user.domain.exception.UserDomainException;
-import com.hades.user.presentation.mapper.UserDtoMapper;
+import com.hades.user.presentation.mapper.UserDtoMapperImpl;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -24,7 +24,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 @WebMvcTest(UserCommandController.class)
-@Import(UserDtoMapper.class)
+@Import(UserDtoMapperImpl.class)
 class UserCommandControllerTest {
 
     @Autowired
@@ -76,7 +76,7 @@ class UserCommandControllerTest {
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(objectMapper.writeValueAsString(request)))
                     .andExpect(status().isBadRequest())
-                    .andExpect(jsonPath("$.message").value("Email already exists: john@example.com"))
+                    .andExpect(jsonPath("$.detail").value("Email already exists: john@example.com"))
                     .andExpect(jsonPath("$.status").value(400));
         }
 
@@ -120,7 +120,7 @@ class UserCommandControllerTest {
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(objectMapper.writeValueAsString(request)))
                     .andExpect(status().isBadRequest())
-                    .andExpect(jsonPath("$.message").value("Username already exists: new_name"))
+                    .andExpect(jsonPath("$.detail").value("Username already exists: new_name"))
                     .andExpect(jsonPath("$.status").value(400));
         }
 
@@ -159,7 +159,7 @@ class UserCommandControllerTest {
 
             mockMvc.perform(delete("/api/users/{id}", userId))
                     .andExpect(status().isBadRequest())
-                    .andExpect(jsonPath("$.message").value("User not found with id: " + userId))
+                    .andExpect(jsonPath("$.detail").value("User not found with id: " + userId))
                     .andExpect(jsonPath("$.status").value(400));
         }
     }

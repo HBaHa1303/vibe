@@ -1,10 +1,12 @@
 package com.hades.user.domain.model;
 
 import com.hades.user.domain.exception.InvalidUsernameException;
+import lombok.Getter;
 
 import java.util.Objects;
 import java.util.regex.Pattern;
 
+@Getter
 public final class Username {
 
     private static final Pattern USERNAME_PATTERN = Pattern.compile("^[a-zA-Z0-9_]+$");
@@ -37,10 +39,6 @@ public final class Username {
 
     public static Username reconstitute(String value) {
         return new Username(value);
-    }
-
-    public String getValue() {
-        return value;
     }
 
     @Override

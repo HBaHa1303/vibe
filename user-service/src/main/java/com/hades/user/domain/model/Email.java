@@ -1,10 +1,12 @@
 package com.hades.user.domain.model;
 
 import com.hades.user.domain.exception.InvalidEmailException;
+import lombok.Getter;
 
 import java.util.Objects;
 import java.util.regex.Pattern;
 
+@Getter
 public final class Email {
 
     private static final Pattern EMAIL_PATTERN = Pattern.compile(
@@ -30,10 +32,6 @@ public final class Email {
 
     public static Email reconstitute(String value) {
         return new Email(value);
-    }
-
-    public String getValue() {
-        return value;
     }
 
     @Override

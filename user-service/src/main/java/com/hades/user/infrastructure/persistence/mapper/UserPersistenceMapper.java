@@ -4,14 +4,16 @@ import com.hades.user.domain.model.Email;
 import com.hades.user.domain.model.User;
 import com.hades.user.domain.model.Username;
 import com.hades.user.infrastructure.persistence.entity.UserJpaEntity;
-import org.springframework.stereotype.Component;
+import org.mapstruct.Mapper;
+import org.mapstruct.Mapping;
+import org.mapstruct.Named;
 
 import java.util.List;
 
-@Component
-public class UserPersistenceMapper {
+@Mapper(componentModel = "spring")
+public interface UserPersistenceMapper {
 
-    public User toDomain(UserJpaEntity entity) {
+    default User toDomain(UserJpaEntity entity) {
         return User.reconstitute(
                 entity.getId(),
                 Username.reconstitute(entity.getUsername()),
@@ -28,24 +30,22 @@ public class UserPersistenceMapper {
         );
     }
 
-    public UserJpaEntity toEntity(User user) {
-        return UserJpaEntity.builder()
-                .id(user.getId())
-                .username(user.getUsername().getValue())
-                .email(user.getEmail().getValue())
-                .fullName(user.getFullName())
-                .phone(user.getPhone())
-                .address(user.getAddress())
-                .avatar(user.getAvatar())
-                .role(user.getRole())
-                .isActive(user.isActive())
-                .lastLoginAt(user.getLastLoginAt())
-                .createdAt(user.getCreatedAt())
-                .updatedAt(user.getUpdatedAt())
-                .build();
+    @Mapping(target = "username", source = "username", qualifiedByName = "fromUsername")
+    @Mapping(target = "email", source = "email", qualifiedByName = "fromEmail")
+    @Mapping(target = "isActive", source = "active")
+    UserJpaEntity toEntity(User user);
+
+    default List<User> toDomainList(List<UserJpaEntity> entities) {
+        return entities.stream().map(this::toDomain).toList();
     }
 
-    public List<User> toDomainList(List<UserJpaEntity> entities) {
-        return entities.stream().map(this::toDomain).toList();
+    @Named("fromUsername")
+    default String fromUsername(Username username) {
+        return username.getValue();
+    }
+
+    @Named("fromEmail")
+    default String fromEmail(Email email) {
+        return email.getValue();
     }
 }

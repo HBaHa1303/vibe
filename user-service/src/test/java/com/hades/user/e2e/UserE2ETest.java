@@ -139,7 +139,7 @@ class UserE2ETest {
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(duplicateBody))
                     .andExpect(status().isBadRequest())
-                    .andExpect(jsonPath("$.message").value("Email already exists: duplicate@test.com"));
+                    .andExpect(jsonPath("$.detail").value("Email already exists: duplicate@test.com"));
         }
 
         @Test
@@ -172,7 +172,7 @@ class UserE2ETest {
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(duplicateBody))
                     .andExpect(status().isBadRequest())
-                    .andExpect(jsonPath("$.message").value("Username already exists: dup_username"));
+                    .andExpect(jsonPath("$.detail").value("Username already exists: dup_username"));
         }
 
         @Test
@@ -191,7 +191,7 @@ class UserE2ETest {
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(body))
                     .andExpect(status().isBadRequest())
-                    .andExpect(jsonPath("$.message").value("Invalid role: SUPERADMIN"));
+                    .andExpect(jsonPath("$.detail").value("Invalid role: SUPERADMIN"));
         }
     }
 
@@ -223,9 +223,9 @@ class UserE2ETest {
                             .param("page", "0")
                             .param("size", "10"))
                     .andExpect(status().isOk())
-                    .andExpect(jsonPath("$.content").isArray())
-                    .andExpect(jsonPath("$.page").value(0))
-                    .andExpect(jsonPath("$.size").value(10));
+                    .andExpect(jsonPath("$.data").isArray())
+                    .andExpect(jsonPath("$.paging.page").value(0))
+                    .andExpect(jsonPath("$.paging.size").value(10));
         }
     }
 }
